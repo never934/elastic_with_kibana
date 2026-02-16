@@ -1,0 +1,65 @@
+version: '3.8'
+
+services:
+  node01:
+    image: docker.elastic.co/elasticsearch/elasticsearch:7.11.1
+    container_name: node01
+    environment:
+      - node.name=node01
+      - cluster.name=es-cluster-7
+      - discovery.type=single-node
+      - "ES_JAVA_OPTS=-Xms1024m -Xmx1024m"
+      - xpack.security.enabled=true
+      - ELASTIC_PASSWORD=$ELASTIC_PASSWORD
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    volumes:
+      - es-data01:/usr/share/elasticsearch/data
+    ports:
+      - "9200:9200"
+    networks:
+      - es-network
+    healthcheck:
+      test: ["CMD-SHELL", "curl -u elastic:$ELASTIC_PASSWORD -f -s http://localhost:9200/ > /dev/null 2>&1 || exit 1"]
+      interval: 10s
+      timeout: 10s
+      retries: 10
+      start_period: 60s
+
+  kibana:
+    image: docker.elastic.co/kibana/kibana:7.11.1
+    environment:
+      ELASTICSEARCH_HOSTS: http://node01:9200
+      ELASTICSEARCH_USERNAME: elastic
+      ELASTICSEARCH_PASSWORD: $ELASTIC_PASSWORD
+    ports:
+      - "5601:5601"
+    networks:
+      - es-network
+    depends_on:
+      node01:
+        condition: service_healthy
+
+  vector:
+    image: timberio/vector:0.36.0-alpine
+    ports:
+      - "8686:8686"
+    build:
+      context: .
+      dockerfile: Dockerfile.vector
+    depends_on:
+      node01:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - es-network
+
+volumes:
+  es-data01:
+    driver: local
+
+networks:
+  es-network:
+    driver: bridge

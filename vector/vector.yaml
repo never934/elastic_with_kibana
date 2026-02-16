@@ -1,0 +1,38 @@
+sources:
+  unity_http:
+    type: http_server
+    address: 0.0.0.0:8686
+    encoding: json
+    auth:
+      strategy: basic
+      username: unityuser
+      password: $VECTOR_UNITY_TOKEN
+
+transforms:
+  add_timestamp:
+    type: remap
+    inputs:
+      - unity_http
+    source: |
+      .timestamp = now()
+      .index = "unity-events"
+
+sinks:
+  elasticsearch:
+    type: elasticsearch
+    inputs:
+      - add_timestamp
+    endpoints:
+      - http://node01:9200
+    auth:
+      strategy: basic
+      user: elastic
+      password: $ELASTIC_PASSWORD
+    bulk:
+      index: "{{ index }}"
+    batch:
+      max_events: 500
+      timeout_secs: 2
+    buffer:
+      type: disk
+      max_size: 10737418240
