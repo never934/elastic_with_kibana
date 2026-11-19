@@ -1,0 +1,38 @@
+# Route tests: docker run --rm -v $PWD/vector:/v:ro timberio/vector:0.36.0-alpine test /v/vector.yaml /v/tests.yaml
+tests:
+  - name: the AiGotchi game goes to a day index by the receive time (card 55)
+    inputs:
+      - insert_at: add_timestamp
+        type: log
+        log_fields:
+          game: AiGotchi
+          type: startup
+    outputs:
+      - extract_from: add_timestamp
+        conditions:
+          - type: vrl
+            source: |
+              assert_eq!(.index, "unity-events-aigotchi-" + format_timestamp!(.timestamp, "%Y.%m.%d", "UTC"))
+  - name: other games stay in unity-events
+    inputs:
+      - insert_at: add_timestamp
+        type: log
+        log_fields:
+          game: RockPaperIO
+    outputs:
+      - extract_from: add_timestamp
+        conditions:
+          - type: vrl
+            source: assert_eq!(.index, "unity-events")
+  - name: the aigotchi backend stays in aigotchi-events
+    inputs:
+      - insert_at: add_timestamp
+        type: log
+        log_fields:
+          service: aigotchi
+          msg: request
+    outputs:
+      - extract_from: add_timestamp
+        conditions:
+          - type: vrl
+            source: assert_eq!(.index, "aigotchi-events")

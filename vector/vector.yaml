@@ -15,8 +15,15 @@ transforms:
       - unity_http
     source: |
       .timestamp = now()
-      # aigotchi backend logs go to their own index; everything else stays in unity-events
-      .index = if .service == "aigotchi" { "aigotchi-events" } else { "unity-events" }
+      # aigotchi backend logs go to their own index; the AiGotchi game's logs go to a day index that lives 90 days
+      # (card #55, aigotchi-retention.sh); everything else stays in unity-events
+      .index = if .service == "aigotchi" {
+        "aigotchi-events"
+      } else if .game == "AiGotchi" {
+        "unity-events-aigotchi-" + format_timestamp!(.timestamp, "%Y.%m.%d", "UTC")
+      } else {
+        "unity-events"
+      }
 
 sinks:
   elasticsearch:
